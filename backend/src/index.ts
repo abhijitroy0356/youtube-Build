@@ -1,10 +1,11 @@
-import express, { Request, Response } from 'express';
+import express from 'express';
 import cors from 'cors';
 import dotenv from 'dotenv';
 import z, { email, length, minLength } from 'zod'
 import { prisma } from './db';
 import bcrypt from 'bcryptjs'
-import jwt from 'jsonwebtoken'
+import { generatedToken } from './middleware/auth';
+
 
 dotenv.config();
 
@@ -15,9 +16,7 @@ app.use(cors());
 app.use(express.json());
 const JWT_SECRET = process.env.JWT_SECRET
 
-if (!JWT_SECRET) {
-  throw new Error("JWT_SECRET is not defined in .env")
-}
+
 
 // Routes will go here
 const signupSchema = z.object({
@@ -34,7 +33,8 @@ const uploadSchema = z.object({
   videoUrl: z.url(),
   thumbnail: z.url()
 })
-app.post('/api/signup', async (req: Request, res: Response) => {
+
+app.post('/api/signup', async (req, res) => {
   const parsedSignupBody = signupSchema.safeParse(req.body)
   if (!parsedSignupBody.success) {
     res.status(400).json({
@@ -59,13 +59,13 @@ app.post('/api/signup', async (req: Request, res: Response) => {
       channelName: channelName
     }
   })
-  const token = jwt.sign({ userId: user.id }, JWT_SECRET)
+  const token = generatedToken(user.id)
   res.status(201).json({
-    token, userId: user.id
+    username, token
   })
 })
 
-app.post('/api/signin', async (req: Request, res: Response) => {
+app.post('/api/signin', async (req, res) => {
   const parsedSigninbody = signinSchema.safeParse(req.body)
   if (!parsedSigninbody.success) {
     res.status(400).json({
@@ -82,16 +82,17 @@ app.post('/api/signin', async (req: Request, res: Response) => {
     })
     return;
   }
-  const isPasswordValid = await bcrypt.compare(password, isUserExists.password);
-  if (!isPasswordValid) {
-    res.status(401).json({
-      error: "Invalid password"
+  const validUserCheck = await bcrypt.compare(password, isUserExists.password)
+  if (!validUserCheck) {
+    res.status(400).json({
+      error: "Incorrect password"
     })
     return;
   }
-  const token = jwt.sign({ userId: isUserExists.id }, JWT_SECRET)
-  res.status(200).json({
-    token, userId: isUserExists.id
+
+  const token = generatedToken(isUserExists.id);
+  res.status(201).json({
+    username, token
   })
 })
 
