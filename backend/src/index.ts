@@ -172,7 +172,7 @@ app.post('/api/videos',async (req, res)=>{
     })
   }
   const uploadVideo= await prisma.uploads.create({
-    data:{...parseVideo.data, userId:userId},
+    data:{...parseVideo.data, userId:userId}, //fwe
   })
   res.status(201).json(uploadVideo)
   }catch(e){
